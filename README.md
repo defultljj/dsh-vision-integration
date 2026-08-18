@@ -84,10 +84,32 @@ npx @deepseek-ai/dsh plugin --profile web add dsh-vision-router
 ```
 dsh-vision-integration/
 ├── README.md              # 项目介绍(本文件)
-├── 简历-项目经历.md         # 简历用项目经历描述
-└── docs/
-    └── 处理手册.md          # 插件崩溃应急处理手册(症状速查/恢复流程/卸载/预防铁律)
+├── scripts/               # 可执行代码(全部实测通过)
+│   ├── verify.ps1         # 一键预检:8 项检查链(JSON/BOM/bundles/模块加载)
+│   ├── install.ps1        # 一键部署:备份 → 官方安装 → 自动预检
+│   └── recover.ps1        # 崩溃恢复:杀进程 → doctor → repair → 验证
+├── docs/
+│   ├── 处理手册.md          # 插件崩溃应急处理手册(症状速查/恢复流程/卸载/预防铁律)
+│   └── test-report-2026-08-18-1.md  # 预检脚本测试报告(8/8 通过)
+└── .claude/gates/
+    └── test-passed.json   # 工程门控标记(测试通过凭证)
 ```
+
+### 快速上手
+
+```powershell
+# 部署前/部署后验证插件状态
+.\scripts\verify.ps1
+
+# 一键部署(备份→安装→自动预检)
+.\scripts\install.ps1
+
+# 插件崩溃时恢复(先诊断,再视情况 -Kill -Repair)
+.\scripts\recover.ps1 -DoctorOnly
+.\scripts\recover.ps1 -Kill -Repair
+```
+
+> 所有脚本均以 UTF-8 with BOM 编码保存,兼容 Windows PowerShell 5.1 中文环境。
 
 ## 🛡️ 故障预案(项目亮点)
 
