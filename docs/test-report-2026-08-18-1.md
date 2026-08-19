@@ -77,3 +77,46 @@ Profile: C:\Users\<你的用户名>\.dsh\profiles\web
 ```
 
 注:实际输出中的 Windows 用户名已脱敏为 "<你的用户名>"(隐私保护,其余输出未改动)。
+
+---
+
+# 二次修复 — 2026-08-19(终审问题修复)
+
+## 修复内容
+
+| 编号 | 级别 | 修复说明 |
+|------|------|------|
+| F2 | Important | `verify.ps1` 模块加载预检块补 `catch`:`node` 命令找不到的终止错误转为干净 [FAIL],不再异常退出 |
+| F3 | Important | `install.ps1` 安装失败分支改为 try/finally 单次 `Pop-Location`,消除双重弹出;第 3 步改为子进程 `powershell.exe -File` 运行 verify,消除 `exit` 后的死代码 |
+| F4 | Important | `recover.ps1` 第 4 步改为子进程运行 verify 并接住退出码,结尾提示与退出码透传不再被 `exit` 截断 |
+| F5 | Minor | README mermaid 图删除多余无标签边 `LLM --> ROUTER` |
+| F6 | Minor | README 环境表占位符统一为 `C:\Users\<你的用户名>` |
+| F7 | Minor | README 结构图注释"可执行代码(全部实测通过)"改为"可执行脚本(verify.ps1 实测通过;install/recover 破坏性操作默认关闭)" |
+
+## 验证结果
+
+| 验证项 | 方法 | 结果 |
+|--------|------|------|
+| PowerShell 语法(三脚本) | `[scriptblock]::Create((Get-Content -Raw ...))` | verify/install/recover 全部 PARSE_OK,退出码 0 |
+| verify.ps1 真实复测 | 本机真实 web profile 运行 | 8/8 PASS,退出码 0 |
+| README mermaid 语法 | mermaid.parse(jsdom 环境) | MERMAID_PARSE_OK |
+
+## 实际输出(Step 6② 复测)
+
+```text
+=== dsh-vision-router 预检 ===
+Profile: C:\Users\<你的用户名>\.dsh\profiles\web
+
+[PASS] profile 目录存在
+[PASS] package.json 存在
+[PASS] 无 UTF-8 BOM(首字节=123)
+[PASS] JSON 语法合法
+[PASS] dependencies 已注册
+[PASS] dsh.profile.bundles 已注册
+[PASS] node_modules 插件实体存在
+[PASS] 模块加载预检(apply=function)
+
+✅ 全部检查通过
+```
+
+注:实际输出中的 Windows 用户名已脱敏为 "<你的用户名>"(隐私保护,其余输出未改动);复测命令原样运行(GBK 管道下中文乱码),另以 UTF-8 控制台编码复跑一次取得上述可读输出,两次结果一致(8/8 PASS,退出码 0)。

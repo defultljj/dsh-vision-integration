@@ -28,7 +28,6 @@ flowchart TB
         LLM["会话模型<br/>deepseek-v4-flash<br/>纯文本推理"]
         ROUTER["dsh-vision-router 插件<br/>按轮次路由"]
     end
-    LLM --> ROUTER
     ROUTER -->|"图片轮次:自动切换视觉模型"| VISION["视觉模型:14 个视觉工具<br/>图像问答/OCR/像素对比/截图分析"]
     ROUTER -->|"文字轮次:保持原模型,成本与上下文零影响"| LLM
     VISION -.->|"免费兜底"| OVH["OVHcloud 匿名视觉链<br/>5 个模型,免 Key 免注册"]
@@ -62,7 +61,7 @@ flowchart TB
 | 项 | 值 |
 |---|---|
 | DSH 版本 | 0.1.0-rc.7 |
-| Profile | `web`(`C:\Users\<user>\.dsh\profiles\web`) |
+| Profile | `web`(`C:\Users\<你的用户名>\.dsh\profiles\web`) |
 | Node.js | v24.16.0(系统)/ v24.19.0(桌面运行时) |
 | 包管理器 | pnpm 11.22.0 |
 
@@ -98,7 +97,7 @@ dsh-vision-integration/
 ├── README.md              # 项目介绍(本文件)
 ├── LICENSE                # MIT 协议(文档内容)
 ├── .gitignore             # 忽略备份/依赖/内部产物
-├── scripts/               # 可执行代码(全部实测通过)
+├── scripts/               # 可执行脚本(verify.ps1 实测通过;install/recover 破坏性操作默认关闭)
 │   ├── verify.ps1         # 一键预检:8 项检查链(JSON/BOM/bundles/模块加载)
 │   ├── install.ps1        # 一键部署:备份 → 官方安装 → 自动预检
 │   └── recover.ps1        # 崩溃恢复:杀进程 → doctor → repair → 验证

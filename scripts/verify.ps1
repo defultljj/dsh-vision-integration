@@ -82,6 +82,9 @@ if (Test-Path $entry) {
     try {
         $loadOut = @(node -e "import('dsh-vision-router').then(m => { console.log(typeof m.apply) }).catch(e => { console.error(e.message); process.exit(1) })" 2>&1)
     }
+    catch {
+        $loadOut = @("node 不可用: $($_.Exception.Message)")
+    }
     finally {
         Pop-Location
     }

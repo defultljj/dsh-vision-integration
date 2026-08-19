@@ -66,10 +66,17 @@ elseif (-not $DoctorOnly) {
     Write-Host "`n[INFO] 未加 -Repair,跳过自动修复(如有 BOM 报错可加 -Repair)" -ForegroundColor Yellow
 }
 
-# 4. 验证配置
+# 4. 验证配置(子进程运行,避免 verify.ps1 的 exit 终止本脚本,保证结尾提示可见)
 Write-Host "`n[STEP] 验证 profile 配置 ..." -ForegroundColor Cyan
 $verify = Join-Path $PSScriptRoot 'verify.ps1'
-& $verify -ProfileDir $profileDir
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $verify -ProfileDir $profileDir
+$verifyExit = $LASTEXITCODE
 
 Write-Host "`n=== 恢复流程结束 ===" -ForegroundColor Cyan
-Write-Host "若仍无法启动,请参考 docs/处理手册.md 手动兜底方案(删除依赖+bundles 两处条目)。" -ForegroundColor Yellow
+if ($verifyExit -ne 0) {
+    Write-Host "验证未通过(退出码 $verifyExit),请参考 docs/处理手册.md 手动兜底方案(删除依赖+bundles 两处条目)。" -ForegroundColor Yellow
+}
+else {
+    Write-Host "验证通过,可以重启 DSH 验证。" -ForegroundColor Green
+}
+exit $verifyExit

@@ -41,20 +41,22 @@ Write-Host "[OK] 已备份 → package.json.bak" -ForegroundColor Green
 
 # 2. 官方安装(自动处理依赖 + bundles 注册 + lockfile)
 Write-Host "`n[STEP] 执行官方安装命令 ..." -ForegroundColor Cyan
+$installExit = 1
 Push-Location $profileDir
 try {
     npx --yes @deepseek-ai/dsh plugin --profile web add dsh-vision-router 2>&1 | ForEach-Object { Write-Host $_ }
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "[FAIL] 安装命令退出码 $LASTEXITCODE" -ForegroundColor Red
-        Pop-Location; exit 1
-    }
+    $installExit = $LASTEXITCODE
 }
 finally {
     Pop-Location
 }
+if ($installExit -ne 0) {
+    Write-Host "[FAIL] 安装命令退出码 $installExit" -ForegroundColor Red
+    exit 1
+}
 
-# 3. 自动预检
+# 3. 自动预检(子进程运行,避免 verify.ps1 的 exit 终止本脚本)
 Write-Host "`n[STEP] 自动预检 ..." -ForegroundColor Cyan
 $verify = Join-Path $PSScriptRoot 'verify.ps1'
-& $verify -ProfileDir $profileDir
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $verify -ProfileDir $profileDir
 exit $LASTEXITCODE
