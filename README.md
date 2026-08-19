@@ -22,20 +22,21 @@ DeepSeek Harness(DSH)默认会话模型为纯文本推理模型(deepseek-v4-flas
 
 ### 架构总览
 
+```mermaid
+flowchart TB
+    subgraph DSH["DeepSeek Harness(DSH)"]
+        LLM["会话模型<br/>deepseek-v4-flash<br/>纯文本推理"]
+        ROUTER["dsh-vision-router 插件<br/>按轮次路由"]
+    end
+    LLM --> ROUTER
+    ROUTER -->|"图片轮次:自动切换视觉模型"| VISION["视觉模型:14 个视觉工具<br/>图像问答/OCR/像素对比/截图分析"]
+    ROUTER -->|"文字轮次:保持原模型,成本与上下文零影响"| LLM
+    VISION -.->|"免费兜底"| OVH["OVHcloud 匿名视觉链<br/>5 个模型,免 Key 免注册"]
 ```
-┌─────────────────────────────────────────────────────┐
-│                  DeepSeek Harness (DSH)             │
-│  ┌─────────────┐   ┌─────────────────────────────┐  │
-│  │ 会话模型      │   │  dsh-vision-router 插件      │  │
-│  │ (纯文本推理)  │◄──│  ├─ 图片轮次自动路由           │  │
-│  │ deepseek-v4 │   │  ├─ 14 个像素级视觉工具        │  │
-│  └─────────────┘   │  └─ 免费 OVH 匿名视觉链(兜底)  │  │
-│                    └─────────────────────────────┘  │
-└─────────────────────────────────────────────────────┘
-         ▲                                            ▲
-         │ 文字轮次保持原模型/成本/上下文               │ 视觉模型只当"眼睛"
-         └────────────────────────────────────────────┘
-```
+
+- 含图片的轮次(用户上传或工具结果如 `read_image`)由插件整体路由到视觉模型
+- 文字轮次保持会话原模型:模型、成本、上下文完全不动
+- "DeepSeek 负责思考,视觉模型负责看"
 
 ### 关键技术点
 
@@ -44,6 +45,15 @@ DeepSeek Harness(DSH)默认会话模型为纯文本推理模型(deepseek-v4-flas
 - **工具集**:vision_describe(图像问答)、vision_ground(定位)、vision_crop(裁剪)、vision_pixel_diff(像素对比)、vision_colors(取色)、vision_ocr(文字识别)、vision_trace(SVG 矢量化)、vision_extract_foreground(抠图)、vision_html_screenshot(HTML 截图)等 14 个工具。
 - **无 Python 依赖**:整条管线基于 sharp / potrace / tesseract / 系统 Chrome,无需 Python 环境。
 - **Bundle 补丁机制**:插件通过 `dsh.bundle.patch` 自动挂载(声明式补丁,无需手工编辑 cordis 配置),与宿主 bundle(`dsh-base` / `dsh-web-app`)和已安装皮肤共存。
+
+## 🔧 技术难点与解决方案
+
+| 难点 | 解决方案 |
+|------|---------|
+| 纯文本模型无视觉能力,且不能换模型 | 引入按轮次路由的视觉插件:图片轮走视觉模型,文字轮保持原模型,实现"零替换"接入 |
+| 历史上有插件导致宿主崩溃(加载器报错 `invalid plugin, received object`) | 根因分析:安装/运行期间文件被外部写入导致**文件竞态**;产出铁律——"运行期间不改源码、重启前杀进程、装完先重启再配置" |
+| 配置损坏导致宿主无法启动(JSON 尾逗号、UTF-8 BOM) | 产出诊断与修复方案:先验证文件首字节与 JSON 合法性,再用插件自带 `doctor`/`repair` 工具自动修复,最后手动兜底 |
+| 插件与既有皮肤/宿主的共存 | 通过 bundle 补丁机制(声明式补丁,不手工编辑 cordis 配置)实现多插件共存,验证通过 |
 
 ## 🚀 部署过程(可复现)
 
@@ -79,20 +89,22 @@ npx @deepseek-ai/dsh plugin --profile web add dsh-vision-router
 | 模块加载 | Node 动态 import 预检 | ✅ `apply` 导出为 function,`Config` 正常 |
 | 崩溃预防 | 加载预检 | ✅ 不会出现 `invalid plugin, received object` |
 
+> 说明:上表为部署时人工逐项确认的 6 项记录;`scripts/verify.ps1` 在此基础上提供 8 项自动化预检(额外增加目录存在性与 JSON 语法检查),可随时重复执行。
+
 ## 📁 项目结构
 
-```
+```text
 dsh-vision-integration/
 ├── README.md              # 项目介绍(本文件)
+├── LICENSE                # MIT 协议(文档内容)
+├── .gitignore             # 忽略备份/依赖/内部产物
 ├── scripts/               # 可执行代码(全部实测通过)
 │   ├── verify.ps1         # 一键预检:8 项检查链(JSON/BOM/bundles/模块加载)
 │   ├── install.ps1        # 一键部署:备份 → 官方安装 → 自动预检
 │   └── recover.ps1        # 崩溃恢复:杀进程 → doctor → repair → 验证
-├── docs/
-│   ├── 处理手册.md          # 插件崩溃应急处理手册(症状速查/恢复流程/卸载/预防铁律)
-│   └── test-report-2026-08-18-1.md  # 预检脚本测试报告(8/8 通过)
-└── .claude/gates/
-    └── test-passed.json   # 工程门控标记(测试通过凭证)
+└── docs/
+    ├── 处理手册.md         # 插件崩溃应急处理手册(症状速查/恢复流程/卸载/预防铁律)
+    └── test-report-2026-08-18-1.md  # 预检脚本测试报告(8/8 通过,含复测记录)
 ```
 
 ### 快速上手
