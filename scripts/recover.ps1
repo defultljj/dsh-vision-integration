@@ -37,10 +37,17 @@ Write-Host "Profile: $profileDir`n"
 # 1. 杀进程(可选,默认不杀——需要显式 -Kill)
 if ($Kill) {
     Write-Host "[STEP] 终止残留进程 ..." -ForegroundColor Cyan
-    Get-Process -Name 'DeepSeek','node' -ErrorAction SilentlyContinue |
-        Stop-Process -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
-    Write-Host "[OK] 进程已清理" -ForegroundColor Green
+    $procs = @(Get-Process -Name 'DeepSeek','node' -ErrorAction SilentlyContinue)
+    if ($procs.Count -eq 0) {
+        Write-Host "[OK] 未发现 DeepSeek/node 进程,无需清理" -ForegroundColor Green
+    }
+    else {
+        Write-Host "[WARN] 将终止以下 $($procs.Count) 个进程:" -ForegroundColor Yellow
+        $procs | ForEach-Object { Write-Host "  - $($_.ProcessName) (PID $($_.Id))" }
+        $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+        Write-Host "[OK] 进程已清理" -ForegroundColor Green
+    }
 }
 elseif (-not $DoctorOnly) {
     Write-Host "[INFO] 未加 -Kill,跳过杀进程(建议在重启前手动关闭 DSH)" -ForegroundColor Yellow

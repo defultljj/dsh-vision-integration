@@ -77,20 +77,16 @@ Check "node_modules 插件实体存在" (Test-Path $entry)
 
 # 7. 模块加载预检(模拟 dsh loader 的加载路径)
 if (Test-Path $entry) {
-    $loadTest = & {
-        Push-Location $ProfileDir
-        try {
-            $out = node -e "import('dsh-vision-router').then(m => { console.log(typeof m.apply) }).catch(e => { console.error(e.message); process.exit(1) })" 2>&1
-            Pop-Location
-            $out
-        }
-        catch {
-            Pop-Location
-            $_.Exception.Message
-        }
+    $loadOut = @()
+    Push-Location $ProfileDir
+    try {
+        $loadOut = @(node -e "import('dsh-vision-router').then(m => { console.log(typeof m.apply) }).catch(e => { console.error(e.message); process.exit(1) })" 2>&1)
     }
-    $applyOk = ($loadTest -match '^function$')
-    Check "模块加载预检(apply=function)" $applyOk "(输出: $loadTest)"
+    finally {
+        Pop-Location
+    }
+    $applyOk = ($loadOut | Where-Object { $_ -eq 'function' }).Count -gt 0
+    Check "模块加载预检(apply=function)" $applyOk "(输出: $($loadOut -join ' '))"
 }
 else {
     Check "模块加载预检(apply=function)" $false "(entry.js 缺失,跳过)"
